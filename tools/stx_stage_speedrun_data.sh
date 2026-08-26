@@ -20,15 +20,20 @@ fi
 mkdir -p "$DESTINATION_DATA_DIR"
 
 # The manifest is the observed startup image/font/script closure for Welcome to Antarctica.
-# Sounds and image particles are opened only when their actions occur, so retain those small
-# trees. Keep the challenge music, completion music, shaders, particle definitions, and speech
-# as conservative runtime dependencies. rsync's delete flags ensure an older full-game staging
-# tree is actually pruned.
+# Sounds, image particles, power-ups, projectiles, explosions, and their light sprites are
+# opened only when their actions occur, so retain those small trees. Keep the challenge music,
+# completion music, shaders, particle definitions, and speech as conservative runtime
+# dependencies. rsync's delete flags ensure an older full-game staging tree is actually pruned.
 rsync -a --delete --delete-excluded \
   --include='*/' \
   --include-from="$MANIFEST" \
   --include='/sounds/***' \
   --include='/images/particles/***' \
+  --include='/images/powerups/***' \
+  --include='/images/objects/bullets/***' \
+  --include='/images/objects/coin/***' \
+  --include='/images/objects/explosion/***' \
+  --include='/images/objects/lightmap_light/***' \
   --include='/particles/***' \
   --include='/shader/***' \
   --include='/speech/***' \
@@ -54,6 +59,10 @@ required=(
   "sounds/jump.wav"
   "images/particles/smoke.sprite"
   "images/particles/smoke-1.png"
+  "images/objects/lightmap_light/lightmap_light-tiny.sprite"
+  "images/objects/explosion/explosion.sprite"
+  "images/objects/bullets/firebullet.sprite"
+  "images/powerups/fireflower/fireflower.sprite"
 )
 for asset in "${required[@]}"; do
   if [[ ! -s "$DESTINATION_DATA_DIR/$asset" ]]; then
