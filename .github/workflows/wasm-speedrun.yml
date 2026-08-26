@@ -99,7 +99,7 @@ jobs:
         env:
           BUILD_JOBS: "4"
           SUPERTUX_BUILD_DIR: ${{ github.workspace }}/build-wasm
-        run: tools/stx_build_wasm.sh
+        run: bash tools/stx_build_wasm.sh
 
       - name: Verify and stage artifacts
         run: |
