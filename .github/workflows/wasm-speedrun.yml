@@ -18,7 +18,7 @@ permissions:
 
 concurrency:
   group: speedrun-wasm-${{ github.sha }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   EMSDK_VERSION: "6.0.8"
@@ -61,7 +61,7 @@ jobs:
 
       - name: Cache vcpkg sources and installed packages
         id: cache-vcpkg
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             .tooling/vcpkg
@@ -95,9 +95,20 @@ jobs:
             libvorbis \
             zlib
 
+      # Save as soon as the expensive dependency build succeeds. A later compiler or linker
+      # failure should not force the next diagnostic run to rebuild vcpkg for another 8 minutes.
+      - name: Save vcpkg sources and installed packages
+        if: steps.cache-vcpkg.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .tooling/vcpkg
+            .cache/vcpkg-binaries
+          key: vcpkg-${{ runner.os }}-${{ env.VCPKG_COMMIT }}-emsdk-${{ env.EMSDK_VERSION }}-wasm32-v1
+
       - name: Build deterministic browser runtime
         env:
-          BUILD_JOBS: "4"
+          BUILD_JOBS: "2"
           SUPERTUX_BUILD_DIR: ${{ github.workspace }}/build-wasm
         run: bash tools/stx_build_wasm.sh
 
