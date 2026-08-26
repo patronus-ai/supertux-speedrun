@@ -19,14 +19,16 @@ fi
 
 mkdir -p "$DESTINATION_DATA_DIR"
 
-# The manifest is the observed image/font/script closure for Welcome to Antarctica.
-# Sounds are only opened when their actions occur, so retain the small sound tree. Keep the
-# challenge music, completion music, shaders, particles, and speech as conservative runtime
-# dependencies. rsync's delete flags ensure an older full-game staging tree is actually pruned.
+# The manifest is the observed startup image/font/script closure for Welcome to Antarctica.
+# Sounds and image particles are opened only when their actions occur, so retain those small
+# trees. Keep the challenge music, completion music, shaders, particle definitions, and speech
+# as conservative runtime dependencies. rsync's delete flags ensure an older full-game staging
+# tree is actually pruned.
 rsync -a --delete --delete-excluded \
   --include='*/' \
   --include-from="$MANIFEST" \
   --include='/sounds/***' \
+  --include='/images/particles/***' \
   --include='/particles/***' \
   --include='/shader/***' \
   --include='/speech/***' \
@@ -50,6 +52,8 @@ required=(
   "music/antarctic/chipdisko.ogg"
   "music/misc/leveldone.ogg"
   "sounds/jump.wav"
+  "images/particles/smoke.sprite"
+  "images/particles/smoke-1.png"
 )
 for asset in "${required[@]}"; do
   if [[ ! -s "$DESTINATION_DATA_DIR/$asset" ]]; then
