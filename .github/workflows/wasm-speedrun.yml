@@ -12,6 +12,8 @@ on:
       - "mk/**"
       - "src/**"
       - "tools/stx_build_wasm.sh"
+      - "tools/stx_stage_speedrun_data.sh"
+      - "tools/speedrun-data-manifest.txt"
 
 permissions:
   contents: read
@@ -118,7 +120,7 @@ jobs:
           test -s build-wasm/supertux2.js
           test -s build-wasm/supertux2.wasm
           test -s build-wasm/supertux2.data
-          test "$(find build-wasm/data/levels -type f -name '*.stl' | wc -l)" -eq 1
+          test "$(find build-wasm/data/levels/world1 -type f -name '*.stl' | wc -l)" -eq 1
           test -s build-wasm/data/levels/world1/welcome_antarctica.stl
           test -s build-wasm/data/music/antarctic/chipdisko.ogg
           test -s build-wasm/data/sounds/jump.wav

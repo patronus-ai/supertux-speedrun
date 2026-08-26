@@ -11,9 +11,11 @@ The artifact contains:
 - `BUILD_INFO.txt`
 
 The package is intentionally scoped to the `Welcome to Antarctica` challenge. It contains
-exactly one level, the image/font/script closure observed while loading that level, all sound
-effects, and only the challenge and completion music. The current staged data is about 26 MB;
-CI rejects a `supertux2.data` larger than 40 MiB so a full-game asset copy cannot slip back in.
+exactly one playable world level, the image/font/script closure observed while loading that
+level, all sound effects, and only the challenge and completion music. CMake also generates its
+small internal `levels/misc/menu.stl` scene during configuration. The current staged data is
+about 26 MB; CI rejects a `supertux2.data` larger than 40 MiB so a full-game asset copy cannot
+slip back in.
 
 Embedders should set `SUPERTUX_START_MUTED=1` before startup and use the exported
 `st_set_muted(0|1)` function for an explicit user-controlled mute toggle.
