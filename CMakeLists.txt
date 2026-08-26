@@ -536,6 +536,9 @@ ExternalProject_Add(squirrel
   -DCMAKE_INSTALL_PREFIX=${SQUIRREL_PREFIX}
   -DINSTALL_INC_DIR=include
   ${SQUIRREL_EXTRA_ARGS}
+  # Ninja cannot relink an installed executable's RPATH for a non-ELF WebAssembly target.
+  # Build with the install RPATH from the start; wasm does not use a native dynamic RPATH.
+  -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON
   -DCMAKE_POSITION_INDEPENDENT_CODE=ON)
 
 if(WIN32)
