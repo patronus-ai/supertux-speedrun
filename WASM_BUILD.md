@@ -10,13 +10,22 @@ The artifact contains:
 - `supertux2.data`
 - `BUILD_INFO.txt`
 
-The package includes the complete music and sound trees. Embedders should set
-`SUPERTUX_START_MUTED=1` before startup and use the exported `st_set_muted(0|1)` function for
-an explicit user-controlled mute toggle.
+The package is intentionally scoped to the `Welcome to Antarctica` challenge. It contains
+exactly one level, the image/font/script closure observed while loading that level, all sound
+effects, and only the challenge and completion music. The current staged data is about 26 MB;
+CI rejects a `supertux2.data` larger than 40 MiB so a full-game asset copy cannot slip back in.
+
+Embedders should set `SUPERTUX_START_MUTED=1` before startup and use the exported
+`st_set_muted(0|1)` function for an explicit user-controlled mute toggle.
 
 Artifacts are retained for 30 days. The packaged filesystem is mounted at `/data`, so the
 fixed challenge level is always `/data/levels/world1/welcome_antarctica.stl` regardless of
 which machine produced the build.
+
+`tools/speedrun-data-manifest.txt` records the runtime-opened file closure and
+`tools/stx_stage_speedrun_data.sh` creates the reduced data tree. If this level or its engine
+assets change, regenerate the manifest from a full build and smoke-test a complete trace before
+shipping the updated artifact.
 
 ## Local builds
 

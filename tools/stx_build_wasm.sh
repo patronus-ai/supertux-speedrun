@@ -69,18 +69,13 @@ fi
 
 mkdir -p "$BUILD_DIR"
 
-# Stage the game DATA into the build dir before configuring. CMake only generates one file
-# there (CMakeLists.txt:1205 configure_file for levels/misc/menu.stl); the 245 MB data/ tree is
-# rsynced in by upstream's CI as a separate step (.github/workflows/other.yml:183), outside
-# CMake. Skip it and --preload-file happily packages a single file: the first build produced a
-# 555 KB supertux2.data with no levels at all, and nothing errored -- an engine with no content,
-# which would have made any determinism check a measurement of the menu screen.
-#
-# Keep music and sound in the browser package. The embedding site starts the engine muted via
-# SUPERTUX_START_MUTED and exposes a user-controlled mute button; packaging the assets is what
-# lets audio begin immediately when the user opts in.
-echo "=== staging data/ into build-wasm/data ==="
-rsync -a --delete-after data/ "$BUILD_DIR/data/"
+# Stage the fixed challenge into the build dir before configuring. CMake only generates one
+# file there (CMakeLists.txt:1205 configure_file for levels/misc/menu.stl); data is otherwise
+# supplied separately. The SpeedrunBench stage contains the observed runtime asset closure for
+# Welcome to Antarctica, all sound effects, and its two music tracks. It intentionally excludes
+# every other level and the unrelated 200+ MB content tree.
+echo "=== staging SpeedrunBench challenge data into build-wasm/data ==="
+"$SCRIPT_DIR/stx_stage_speedrun_data.sh" "$SRC/data" "$BUILD_DIR/data"
 du -sh "$BUILD_DIR/data" | sed 's/^/  staged: /'
 find "$BUILD_DIR/data" -name '*.stl' | wc -l | sed 's/^/  level files staged: /'
 

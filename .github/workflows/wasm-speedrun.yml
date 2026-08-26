@@ -118,6 +118,15 @@ jobs:
           test -s build-wasm/supertux2.js
           test -s build-wasm/supertux2.wasm
           test -s build-wasm/supertux2.data
+          test "$(find build-wasm/data/levels -type f -name '*.stl' | wc -l)" -eq 1
+          test -s build-wasm/data/levels/world1/welcome_antarctica.stl
+          test -s build-wasm/data/music/antarctic/chipdisko.ogg
+          test -s build-wasm/data/sounds/jump.wav
+          data_bytes=$(wc -c < build-wasm/supertux2.data)
+          if [ "$data_bytes" -gt $((40 * 1024 * 1024)) ]; then
+            echo "supertux2.data is unexpectedly large: $data_bytes bytes" >&2
+            exit 1
+          fi
           grep -q "supertux_loadFiles" build-wasm/supertux2.html
           grep -q "st_goal_reached" build-wasm/supertux2.js
           grep -q "st_set_muted" build-wasm/supertux2.js
@@ -134,6 +143,8 @@ jobs:
             echo "emsdk=${EMSDK_VERSION}"
             echo "vcpkg=${VCPKG_COMMIT}"
             echo "level_path=/data/levels/world1/welcome_antarctica.stl"
+            echo "asset_scope=welcome-antarctica-only"
+            echo "data_bytes=${data_bytes}"
             echo "audio=music-and-sound-included"
           } > artifact/BUILD_INFO.txt
           du -sh artifact
