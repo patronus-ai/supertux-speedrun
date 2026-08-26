@@ -88,14 +88,20 @@ if(EMSCRIPTEN)
   # modern emsdk (we build on 6.0.8) USE_FREETYPE is a BOOL and =2 is a hard error, which
   # surfaced as "emcc is not able to compile a simple test program" in the tinygettext
   # sub-build. USE_SDL/USE_SDL_IMAGE really are version ints, so they stay at 2.
-  set(USE_FLAGS " -sUSE_SDL=2 -sFULL_ES2=1 -sUSE_SDL_IMAGE=2 -sUSE_FREETYPE=1 -sUSE_PTHREADS=0 -sDISABLE_EXCEPTION_CATCHING=0 --preload-file ${WASM_PRELOAD_DATA_DIR}@/data -sTOTAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -sSDL2_IMAGE_FORMATS='[\"png\",\"jpg\"]' --use-preload-plugins")
+  # Keep filesystem packaging out of C/C++ compile flags. Those flags are forwarded to the
+  # bundled PhysFS, Squirrel, tinygettext, and SDL_ttf ExternalProjects below. When
+  # --preload-file pointed at the 245 MB data tree, every nested CMake compiler check tried to
+  # package the whole game and eventually starved GitHub-hosted runners until they sent SIGTERM.
+  # Only the final SuperTux link needs the virtual filesystem.
+  set(USE_FLAGS " -sUSE_SDL=2 -sFULL_ES2=1 -sUSE_SDL_IMAGE=2 -sUSE_FREETYPE=1 -sUSE_PTHREADS=0 -sDISABLE_EXCEPTION_CATCHING=0 -sTOTAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -sSDL2_IMAGE_FORMATS='[\"png\",\"jpg\"]'")
+  set(PRELOAD_FLAGS " --preload-file ${WASM_PRELOAD_DATA_DIR}@/data --use-preload-plugins")
   if(CMAKE_BUILD_TYPE MATCHES Debug)
     set(USE_FLAGS "${USE_FLAGS} -fsanitize=undefined -sSAFE_HEAP=1 -sASSERTIONS=1 -sDEMANGLE_SUPPORT=1")
   endif()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${USE_FLAGS} -sERROR_ON_UNDEFINED_SYMBOLS=0")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${USE_FLAGS} -sERROR_ON_UNDEFINED_SYMBOLS=0")
-  set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} ${USE_FLAGS} -sERROR_ON_UNDEFINED_SYMBOLS=0 -lidbfs.js")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} ${USE_FLAGS} -sERROR_ON_UNDEFINED_SYMBOLS=0 -lidbfs.js")
+  set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} ${USE_FLAGS} ${PRELOAD_FLAGS} -sERROR_ON_UNDEFINED_SYMBOLS=0 -lidbfs.js")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS}")
 endif()
 
 # TODO: Add " OR ANDROID OR IOS" to this

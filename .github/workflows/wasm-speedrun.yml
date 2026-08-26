@@ -108,7 +108,7 @@ jobs:
 
       - name: Build deterministic browser runtime
         env:
-          BUILD_JOBS: "2"
+          BUILD_JOBS: "1"
           SUPERTUX_BUILD_DIR: ${{ github.workspace }}/build-wasm
         run: bash tools/stx_build_wasm.sh
 
