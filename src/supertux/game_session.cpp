@@ -17,6 +17,7 @@
 #include "supertux/game_session.hpp"
 
 #include <cfloat>
+#include <cstdlib>
 
 #include "audio/sound_manager.hpp"
 #include "control/input_manager.hpp"
@@ -308,8 +309,14 @@ GameSession::setup()
   int total_stats_to_be_collected = m_level->m_stats.m_total_coins + m_level->m_stats.m_total_badguys + m_level->m_stats.m_total_secrets;
   if ((!m_levelintro_shown) && (total_stats_to_be_collected > 0)) {
     m_levelintro_shown = true;
-    m_active = false;
-    ScreenManager::current()->push_screen(std::make_unique<LevelIntro>(*m_level, m_best_level_statistics, m_savegame.get_player_status()));
+    // The browser benchmark starts a synchronized race from its own ready screen. SuperTux's
+    // level intro has no timeout and waits forever for a jump/action key, so leaving it enabled
+    // makes the host pause deterministically on the title card instead of at the first
+    // controllable frame.
+    if (getenv("SUPERTUX_SKIP_LEVEL_INTRO") == nullptr) {
+      m_active = false;
+      ScreenManager::current()->push_screen(std::make_unique<LevelIntro>(*m_level, m_best_level_statistics, m_savegame.get_player_status()));
+    }
   }
   ScreenManager::current()->set_screen_fade(std::make_unique<FadeToBlack>(FadeToBlack::FADEIN, 1.0f));
   m_end_seq_started = false;

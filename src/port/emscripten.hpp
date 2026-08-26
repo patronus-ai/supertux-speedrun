@@ -230,6 +230,17 @@ st_in_level()
   return ::Sector::current() ? 1 : 0;
 }
 
+// Stronger than st_in_level(): Sector::current() already exists while the non-interactive
+// level-intro title card is on top of the session. Hosts must wait for this signal before
+// pausing the main loop and declaring that player input can begin.
+EMSCRIPTEN_KEEPALIVE
+int
+st_gameplay_ready()
+{
+  auto* gs = ::GameSession::current();
+  return (gs && gs->is_active()) ? 1 : 0;
+}
+
 EMSCRIPTEN_KEEPALIVE // This is probably not useful, I just want ppl to know it exists
 void
 set_resolution(int w, int h)
