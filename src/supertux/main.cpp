@@ -450,8 +450,9 @@ Main::launch_game(const CommandLineArguments& args)
 
   s_timelog.log("audio");
   m_sound_manager.reset(new SoundManager());
-  m_sound_manager->enable_sound(g_config->sound_enabled);
-  m_sound_manager->enable_music(g_config->music_enabled);
+  const bool start_muted = (getenv("SUPERTUX_START_MUTED") != nullptr);
+  m_sound_manager->enable_sound(!start_muted && g_config->sound_enabled);
+  m_sound_manager->enable_music(!start_muted && g_config->music_enabled);
   m_sound_manager->set_sound_volume(g_config->sound_volume);
   m_sound_manager->set_music_volume(g_config->music_volume);
 

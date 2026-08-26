@@ -71,12 +71,11 @@ mkdir -p "$BUILD_DIR"
 # 555 KB supertux2.data with no levels at all, and nothing errored -- an engine with no content,
 # which would have made any determinism check a measurement of the menu screen.
 #
-# music/ (87 MB of 245 MB) is excluded: preloaded files land in in-memory MEMFS, and we run with
-# sound and music disabled for determinism, so audio assets cost heap for nothing and cannot
-# affect physics. SuperTux logs a warning for a missing musicfile rather than aborting. Drop the
-# --exclude if audio is ever needed.
+# Keep music and sound in the browser package. The embedding site starts the engine muted via
+# SUPERTUX_START_MUTED and exposes a user-controlled mute button; packaging the assets is what
+# lets audio begin immediately when the user opts in.
 echo "=== staging data/ into build-wasm/data ==="
-rsync -a --delete-after --exclude 'music/' data/ "$BUILD_DIR/data/"
+rsync -a --delete-after data/ "$BUILD_DIR/data/"
 du -sh "$BUILD_DIR/data" | sed 's/^/  staged: /'
 find "$BUILD_DIR/data" -name '*.stl' | wc -l | sed 's/^/  level files staged: /'
 

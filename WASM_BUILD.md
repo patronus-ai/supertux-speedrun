@@ -10,6 +10,10 @@ The artifact contains:
 - `supertux2.data`
 - `BUILD_INFO.txt`
 
+The package includes the complete music and sound trees. Embedders should set
+`SUPERTUX_START_MUTED=1` before startup and use the exported `st_set_muted(0|1)` function for
+an explicit user-controlled mute toggle.
+
 Artifacts are retained for 30 days. The packaged filesystem is mounted at `/data`, so the
 fixed challenge level is always `/data/levels/world1/welcome_antarctica.stl` regardless of
 which machine produced the build.

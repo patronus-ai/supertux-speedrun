@@ -98,8 +98,10 @@ The build aliases its absolute host data directory to `/data` inside MEMFS. `mai
 level argv into dirname/basename and mounts the dirname, so pass the fixed level as the stable
 absolute MEMFS path `/data/levels/world1/welcome_antarctica.stl`.
 
-`music/` (87 MB of 245 MB) is excluded from the preload — audio is disabled for determinism and
-preloaded files live in in-memory MEMFS. SuperTux logs "using dummy sound file" and continues.
+The browser artifact includes the complete music and sound trees. The embedding host sets
+`SUPERTUX_START_MUTED=1` so audio is silent by default, then toggles it through the exported
+`st_set_muted()` function after a user gesture. Audio remains outside the deterministic physics
+state hash.
 
 ## emsdk 6.0.8 vs upstream's pinned 1.40.1
 
@@ -124,5 +126,5 @@ selected and vcpkg's Boost is rejected as "(32bit)".
 
 - Verified on **one level, one 1,200-step tape**. Confirm on a longer run and a second level.
 - Confirm deterministic completion and death handling in the packaged browser artifact.
-- Reduce the preload from the complete no-music data tree to the assets required by the fixed
+- Reduce the preload to the music, sounds, and other assets transitively required by the fixed
   challenge level.

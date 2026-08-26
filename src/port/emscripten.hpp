@@ -21,6 +21,7 @@
 #include <emscripten/html5.h>
 
 #include "addon/addon_manager.hpp"
+#include "audio/sound_manager.hpp"
 #include "gui/menu_manager.hpp"
 #include "supertux/gameconfig.hpp"
 #include "supertux/globals.hpp"
@@ -179,6 +180,21 @@ st_player_dead()
   // only for is_dead() keeps feeding inputs into a run already lost -- the same late-terminal
   // trap seen in Fireboy & Watergirl, where the animation terminal fired ~90 frames early.
   return (p.is_dead() || p.is_dying()) ? 1 : 0;
+}
+
+// Browser embedding starts muted so loading a challenge never produces surprise audio. The
+// host UI calls this from a user gesture to opt in to the packaged music and sound effects.
+EMSCRIPTEN_KEEPALIVE
+void
+st_set_muted(int muted)
+{
+  auto* sound = ::SoundManager::current();
+  if (!sound) return;
+
+  const bool enabled = (muted == 0);
+  if (!enabled) sound->stop_sounds();
+  sound->enable_sound(enabled);
+  sound->enable_music(enabled);
 }
 
 EMSCRIPTEN_KEEPALIVE
