@@ -420,6 +420,15 @@ Main::resave(const std::string& input_filename, const std::string& output_filena
 void
 Main::launch_game(const CommandLineArguments& args)
 {
+  // An embedded benchmark has controls (model selector, mute, start race) outside the SDL
+  // canvas. Clicking any of them makes the iframe lose focus; the desktop default would queue
+  // a pause menu that opens on the first harness-driven step and leaves the race looking
+  // frozen. The host explicitly controls when simulation is paused, so disable that competing
+  // focus policy only for benchmark embeds.
+  if (getenv("SUPERTUX_DISABLE_FOCUS_PAUSE") != nullptr) {
+    g_config->pause_on_focusloss = false;
+  }
+
   m_sdl_subsystem.reset(new SDLSubsystem());
   m_console_buffer.reset(new ConsoleBuffer());
 
