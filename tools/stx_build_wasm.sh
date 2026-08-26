@@ -22,6 +22,7 @@ BUILD_DIR=${SUPERTUX_BUILD_DIR:-$SRC/build-wasm}
 STX_EMSDK_ROOT=${EMSDK_ROOT:-${EMSDK:-}}
 STX_VCPKG_ROOT=${VCPKG_ROOT:-}
 VCPKG_TRIPLET=${VCPKG_TRIPLET:-wasm32-emscripten}
+STX_CMAKE_GENERATOR=${SUPERTUX_CMAKE_GENERATOR:-Ninja}
 
 if [[ -z "$STX_EMSDK_ROOT" || ! -f "$STX_EMSDK_ROOT/emsdk_env.sh" ]]; then
   echo "Set EMSDK_ROOT to an activated emsdk checkout." >&2
@@ -29,6 +30,10 @@ if [[ -z "$STX_EMSDK_ROOT" || ! -f "$STX_EMSDK_ROOT/emsdk_env.sh" ]]; then
 fi
 if [[ -z "$STX_VCPKG_ROOT" || ! -x "$STX_VCPKG_ROOT/vcpkg" ]]; then
   echo "Set VCPKG_ROOT to a bootstrapped vcpkg checkout." >&2
+  exit 2
+fi
+if [[ "$STX_CMAKE_GENERATOR" == "Ninja" ]] && ! command -v ninja >/dev/null 2>&1; then
+  echo "Ninja is required (install it with apt, Homebrew, or your package manager)." >&2
   exit 2
 fi
 
@@ -83,7 +88,7 @@ cd "$BUILD_DIR"
 
 # CMake will NOT swap compilers on a re-configure -- the failed host-compiler run is baked
 # into the cache, so it must go or we re-detect /usr/bin/c++ and fail identically.
-rm -rf CMakeCache.txt CMakeFiles
+rm -rf CMakeCache.txt CMakeFiles Makefile build.ninja cmake_install.cmake
 
 echo "=== CMAKE CONFIGURE ==="
 # vcpkg and emscripten BOTH want to be CMAKE_TOOLCHAIN_FILE, and passing vcpkg's explicitly
@@ -126,7 +131,7 @@ VLIB="$STX_VCPKG_ROOT/installed/$VCPKG_TRIPLET/lib"
 # wasm and preserves the single-threaded build. Enabling real pthreads would "fix" the
 # configure and defeat the point: pthreads/SharedArrayBuffer is what deadlocks the virtual
 # clock we need to drive the sim deterministically.
-emcmake cmake .. \
+emcmake cmake .. -G "$STX_CMAKE_GENERATOR" \
   -DCMAKE_BUILD_TYPE=Release \
   -DENABLE_OPENGLES2=ON \
   -DCMAKE_TOOLCHAIN_FILE="$STX_VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
@@ -143,9 +148,12 @@ emcmake cmake .. \
   -DSIZEOF_VOID_P=4
 echo "cmake_exit=0"
 
-echo "=== MAKE ==="
-emmake make -j"$JOBS"
-echo "make_exit=0"
+echo "=== BUILD ==="
+# CMake's nested ExternalProject configure steps repeatedly lost GNU Make's jobserver children
+# on GitHub-hosted runners ("wait: No child processes" followed by SIGTERM). Ninja avoids that
+# process-accounting path and works for both the top-level project and its nested dependencies.
+emmake cmake --build . --parallel "$JOBS"
+echo "build_exit=0"
 
 # Install SuperTux's own HTML shell over emscripten's default one. CMakeLists.txt:1157
 # configure_file()s template.html.in into the build dir but never installs it; upstream's CI

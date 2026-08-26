@@ -20,9 +20,9 @@ which machine produced the build.
 
 ## Local builds
 
-The build is not Linux-only. It can run on macOS or Linux once emsdk 6.0.8 and vcpkg are
-installed. The script no longer contains `/home/ubuntu` paths and accepts its tool locations
-through environment variables:
+The build is not Linux-only. It can run on macOS or Linux once emsdk 6.0.8, vcpkg, CMake, and
+Ninja are installed. The script no longer contains `/home/ubuntu` paths and accepts its tool
+locations through environment variables:
 
 ```bash
 export EMSDK_ROOT=/absolute/path/to/emsdk
