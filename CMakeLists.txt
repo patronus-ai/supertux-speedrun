@@ -60,6 +60,7 @@ set(APPDATADIR "${CMAKE_INSTALL_PREFIX}/share/games/supertux2")
 
 set(BUILD_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/data")
 set(BUILD_CONFIG_DATA_DIR "${CMAKE_BINARY_DIR}/data")
+set(WASM_PRELOAD_DATA_DIR "${BUILD_CONFIG_DATA_DIR}")
 ## Check endianess
 
 if(NOT EMSCRIPTEN)
@@ -79,11 +80,15 @@ if(EMSCRIPTEN)
   set(CMAKE_EXECUTABLE_SUFFIX .html)
   set(IS_EMSCRIPTEN_BUILD ON)
 
+  # Keep the packaged filesystem independent of the machine that built it. The source
+  # directory is absolute at link time, but SuperTux always sees the stable /data mount.
+  set(BUILD_CONFIG_DATA_DIR "/data")
+
   # USE_FREETYPE was 2 upstream, which emsdk 1.40.1 accepted by analogy with USE_SDL=2. In
   # modern emsdk (we build on 6.0.8) USE_FREETYPE is a BOOL and =2 is a hard error, which
   # surfaced as "emcc is not able to compile a simple test program" in the tinygettext
   # sub-build. USE_SDL/USE_SDL_IMAGE really are version ints, so they stay at 2.
-  set(USE_FLAGS " -sUSE_SDL=2 -sFULL_ES2=1 -sUSE_SDL_IMAGE=2 -sUSE_FREETYPE=1 -sUSE_PTHREADS=0 -sDISABLE_EXCEPTION_CATCHING=0 --preload-file ${BUILD_CONFIG_DATA_DIR} -sTOTAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -sSDL2_IMAGE_FORMATS='[\"png\",\"jpg\"]' --use-preload-plugins")
+  set(USE_FLAGS " -sUSE_SDL=2 -sFULL_ES2=1 -sUSE_SDL_IMAGE=2 -sUSE_FREETYPE=1 -sUSE_PTHREADS=0 -sDISABLE_EXCEPTION_CATCHING=0 --preload-file ${WASM_PRELOAD_DATA_DIR}@/data -sTOTAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -sSDL2_IMAGE_FORMATS='[\"png\",\"jpg\"]' --use-preload-plugins")
   if(CMAKE_BUILD_TYPE MATCHES Debug)
     set(USE_FLAGS "${USE_FLAGS} -fsanitize=undefined -sSAFE_HEAP=1 -sASSERTIONS=1 -sDEMANGLE_SUPPORT=1")
   endif()

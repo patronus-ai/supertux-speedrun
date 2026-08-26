@@ -49,6 +49,7 @@ Important documentation for SuperTux is contained in multiple files.
 Please see them:
 
 * `INSTALL.md` - Requirements, compiling and installing.
+* `WASM_BUILD.md` - Reproducible deterministic browser build and artifacts.
 * `README.md` - This file
 * `NEWS.md` - Changes since the previous versions of SuperTux.
 * `LICENSE.txt` - The GNU General Public License, under whose terms SuperTux is

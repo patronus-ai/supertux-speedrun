@@ -14,22 +14,47 @@
 #
 # -sUSE_PTHREADS=0 is the second half: single-threaded is what lets a virtual clock
 # drive the sim without deadlocking against SharedArrayBuffer/pthreads.
-set -u
+set -euo pipefail
+
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+SRC=${SUPERTUX_SRC_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}
+BUILD_DIR=${SUPERTUX_BUILD_DIR:-$SRC/build-wasm}
+EMSDK_ROOT=${EMSDK_ROOT:-${EMSDK:-}}
+VCPKG_ROOT=${VCPKG_ROOT:-}
+VCPKG_TRIPLET=${VCPKG_TRIPLET:-wasm32-emscripten}
+
+if [[ -z "$EMSDK_ROOT" || ! -f "$EMSDK_ROOT/emsdk_env.sh" ]]; then
+  echo "Set EMSDK_ROOT to an activated emsdk checkout." >&2
+  exit 2
+fi
+if [[ -z "$VCPKG_ROOT" || ! -x "$VCPKG_ROOT/vcpkg" ]]; then
+  echo "Set VCPKG_ROOT to a bootstrapped vcpkg checkout." >&2
+  exit 2
+fi
+
+if [[ -n "${BUILD_JOBS:-}" ]]; then
+  JOBS=$BUILD_JOBS
+elif command -v nproc >/dev/null 2>&1; then
+  JOBS=$(nproc)
+else
+  JOBS=$(sysctl -n hw.logicalcpu 2>/dev/null || echo 4)
+fi
 
 # SINGLE-INSTANCE LOCK. This script wipes CMakeCache.txt before configuring, so two copies
 # racing in one build dir delete each other's state. That produced a bogus
 # "Cannot copy output executable ''" at CheckTypeSize TWICE and both times looked like a real
 # toolchain fault. Refuse to be the second instance instead.
-exec 9>/tmp/stx_build.lock
-if ! flock -n 9; then
-  echo "ANOTHER BUILD IS ALREADY RUNNING (holding /tmp/stx_build.lock) -- refusing to start."
-  echo "Watch the existing one:  grep -E 'cmake_exit|make_exit|STX_' /home/ubuntu/stx_wasm_build.log"
-  exit 3
+if command -v flock >/dev/null 2>&1; then
+  exec 9>"${TMPDIR:-/tmp}/stx_build.lock"
+  if ! flock -n 9; then
+    echo "Another SuperTux WASM build is already running." >&2
+    exit 3
+  fi
 fi
 
-source /home/ubuntu/emsdk/emsdk_env.sh >/dev/null 2>&1
-SRC=/home/ubuntu/supertux-src
-cd "$SRC" || exit 1
+# shellcheck source=/dev/null
+source "$EMSDK_ROOT/emsdk_env.sh" >/dev/null 2>&1
+cd "$SRC"
 
 # Upstream applies this to the SDL_ttf submodule; a re-apply is a harmless no-op.
 if [ -d external/SDL_ttf ]; then
@@ -37,7 +62,7 @@ if [ -d external/SDL_ttf ]; then
       && echo "SDL_ttf patch applied" || echo "SDL_ttf patch already applied / not needed" )
 fi
 
-mkdir -p build-wasm
+mkdir -p "$BUILD_DIR"
 
 # Stage the game DATA into the build dir before configuring. CMake only generates one file
 # there (CMakeLists.txt:1205 configure_file for levels/misc/menu.stl); the 245 MB data/ tree is
@@ -51,11 +76,11 @@ mkdir -p build-wasm
 # affect physics. SuperTux logs a warning for a missing musicfile rather than aborting. Drop the
 # --exclude if audio is ever needed.
 echo "=== staging data/ into build-wasm/data ==="
-rsync -a --delete-after --exclude 'music/' data/ build-wasm/data/ || exit 1
-du -sh build-wasm/data | sed 's/^/  staged: /'
-find build-wasm/data -name '*.stl' | wc -l | sed 's/^/  level files staged: /'
+rsync -a --delete-after --exclude 'music/' data/ "$BUILD_DIR/data/"
+du -sh "$BUILD_DIR/data" | sed 's/^/  staged: /'
+find "$BUILD_DIR/data" -name '*.stl' | wc -l | sed 's/^/  level files staged: /'
 
-cd build-wasm || exit 1
+cd "$BUILD_DIR"
 
 # CMake will NOT swap compilers on a re-configure -- the failed host-compiler run is baked
 # into the cache, so it must go or we re-detect /usr/bin/c++ and fail identically.
@@ -69,8 +94,8 @@ echo "=== CMAKE CONFIGURE ==="
 # point and loads the emscripten toolchain underneath, so emcc is the actual compiler.
 # (The wasm32-emscripten triplet sets CHAINLOAD for vcpkg's own package builds only, which
 # is why the dependencies built fine while the consuming project did not.)
-EM_TC=/home/ubuntu/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
-VLIB=/home/ubuntu/vcpkg/installed/wasm32-emscripten/lib
+EM_TC="$EMSDK_ROOT/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+VLIB="$VCPKG_ROOT/installed/$VCPKG_TRIPLET/lib"
 
 # FindOggVorbis.cmake:37 does check_library_exists(vorbis ...), emitting a bare -lvorbis that
 # wasm-ld cannot resolve without vcpkg's lib dir on the search path. Passing
@@ -105,9 +130,9 @@ VLIB=/home/ubuntu/vcpkg/installed/wasm32-emscripten/lib
 emcmake cmake .. \
   -DCMAKE_BUILD_TYPE=Release \
   -DENABLE_OPENGLES2=ON \
-  -DCMAKE_TOOLCHAIN_FILE=/home/ubuntu/vcpkg/scripts/buildsystems/vcpkg.cmake \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
   -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="$EM_TC" \
-  -DVCPKG_TARGET_TRIPLET=wasm32-emscripten \
+  -DVCPKG_TARGET_TRIPLET="$VCPKG_TRIPLET" \
   -DCMAKE_HAVE_LIBC_PTHREAD=1 \
   -DTHREADS_PREFER_PTHREAD_FLAG=OFF \
   -DIconv_IS_BUILT_IN=TRUE \
@@ -117,15 +142,11 @@ emcmake cmake .. \
   -DCMAKE_CXX_FLAGS="-L$VLIB -DEMSCRIPTEN" \
   -DHAVE_SIZEOF_VOID_P=TRUE \
   -DSIZEOF_VOID_P=4
-rc=$?
-echo "cmake_exit=$rc"
-if [ "$rc" -ne 0 ]; then echo STX_CONFIGURE_FAILED; exit 1; fi
+echo "cmake_exit=0"
 
 echo "=== MAKE ==="
-emmake make -j30
-rc=$?
-echo "make_exit=$rc"
-if [ "$rc" -ne 0 ]; then echo STX_BUILD_FAILED; exit 1; fi
+emmake make -j"$JOBS"
+echo "make_exit=0"
 
 # Install SuperTux's own HTML shell over emscripten's default one. CMakeLists.txt:1157
 # configure_file()s template.html.in into the build dir but never installs it; upstream's CI
@@ -136,12 +157,22 @@ if [ "$rc" -ne 0 ]; then echo STX_BUILD_FAILED; exit 1; fi
 # The game looked built and launched to a blank 300x150 canvas.
 if [ -f template.html ]; then
   cp -f template.html supertux2.html || exit 1
-  grep -q 'supertux_loadFiles' supertux2.html \
-    && echo "  installed SuperTux html shell (supertux_loadFiles present)" \
-    || { echo "  ERROR: shell installed but supertux_loadFiles missing"; exit 1; }
+  if grep -q 'supertux_loadFiles' supertux2.html; then
+    echo "  installed SuperTux html shell (supertux_loadFiles present)"
+  else
+    echo "  ERROR: shell installed but supertux_loadFiles missing"
+    exit 1
+  fi
 else
   echo "  ERROR: template.html not generated -- expected from CMakeLists.txt:1157"; exit 1
 fi
 
-ls -la supertux2.{js,wasm,data} 2>/dev/null
+for artifact in supertux2.html supertux2.js supertux2.wasm supertux2.data; do
+  if [[ ! -s "$artifact" ]]; then
+    echo "Missing or empty build artifact: $BUILD_DIR/$artifact" >&2
+    exit 1
+  fi
+done
+ls -lah supertux2.{html,js,wasm,data}
 echo STX_BUILD_DONE
+echo "Artifacts: $BUILD_DIR"

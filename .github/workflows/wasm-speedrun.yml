@@ -1,0 +1,136 @@
+name: Build speedrun WASM
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/wasm-speedrun.yml"
+      - "CMakeLists.txt"
+      - "config.h.cmake"
+      - "data/**"
+      - "external/**"
+      - "mk/**"
+      - "src/**"
+      - "tools/stx_build_wasm.sh"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: speedrun-wasm-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EMSDK_VERSION: "6.0.8"
+  VCPKG_COMMIT: "ddd0023b0eee70986e42ed49d9d4afb8098f212e"
+  EMSDK_ROOT: ${{ github.workspace }}/.tooling/emsdk
+  VCPKG_ROOT: ${{ github.workspace }}/.tooling/vcpkg
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.cache/vcpkg-binaries
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+
+    steps:
+      - name: Check out SuperTux and submodules
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install system build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential cmake ninja-build pkg-config rsync zip
+
+      - name: Cache emsdk
+        id: cache-emsdk
+        uses: actions/cache@v4
+        with:
+          path: .tooling/emsdk
+          key: emsdk-${{ runner.os }}-${{ env.EMSDK_VERSION }}
+
+      - name: Install emsdk
+        if: steps.cache-emsdk.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .tooling
+          git clone --branch "${EMSDK_VERSION}" --depth 1 https://github.com/emscripten-core/emsdk.git "${EMSDK_ROOT}"
+          "${EMSDK_ROOT}/emsdk" install "${EMSDK_VERSION}"
+          "${EMSDK_ROOT}/emsdk" activate "${EMSDK_VERSION}"
+
+      - name: Cache vcpkg sources and installed packages
+        id: cache-vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            .tooling/vcpkg
+            .cache/vcpkg-binaries
+          key: vcpkg-${{ runner.os }}-${{ env.VCPKG_COMMIT }}-emsdk-${{ env.EMSDK_VERSION }}-wasm32-v1
+
+      - name: Install vcpkg
+        if: steps.cache-vcpkg.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .tooling "${VCPKG_DEFAULT_BINARY_CACHE}"
+          git clone https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT}"
+          git -C "${VCPKG_ROOT}" checkout "${VCPKG_COMMIT}"
+          "${VCPKG_ROOT}/bootstrap-vcpkg.sh" -disableMetrics
+
+      - name: Install WASM dependencies
+        run: |
+          source "${EMSDK_ROOT}/emsdk_env.sh"
+          mkdir -p "${VCPKG_DEFAULT_BINARY_CACHE}"
+          export VCPKG_BINARY_SOURCES="clear;files,${VCPKG_DEFAULT_BINARY_CACHE},readwrite"
+          "${VCPKG_ROOT}/vcpkg" install --triplet wasm32-emscripten \
+            boost-date-time \
+            boost-filesystem \
+            boost-format \
+            boost-locale \
+            boost-optional \
+            boost-system \
+            glbinding \
+            glm \
+            libogg \
+            libpng \
+            libvorbis \
+            zlib
+
+      - name: Build deterministic browser runtime
+        env:
+          BUILD_JOBS: "4"
+          SUPERTUX_BUILD_DIR: ${{ github.workspace }}/build-wasm
+        run: tools/stx_build_wasm.sh
+
+      - name: Verify and stage artifacts
+        run: |
+          test -s build-wasm/supertux2.html
+          test -s build-wasm/supertux2.js
+          test -s build-wasm/supertux2.wasm
+          test -s build-wasm/supertux2.data
+          grep -q "supertux_loadFiles" build-wasm/supertux2.html
+          grep -q "st_goal_reached" build-wasm/supertux2.js
+          mkdir -p artifact
+          cp build-wasm/supertux2.html artifact/
+          cp build-wasm/supertux2.js artifact/
+          cp build-wasm/supertux2.wasm artifact/
+          cp build-wasm/supertux2.data artifact/
+          cp build-wasm/supertux2.png artifact/ 2>/dev/null || true
+          cp build-wasm/supertux2_bkg.png artifact/ 2>/dev/null || true
+          {
+            echo "source_repository=${GITHUB_REPOSITORY}"
+            echo "source_commit=${GITHUB_SHA}"
+            echo "emsdk=${EMSDK_VERSION}"
+            echo "vcpkg=${VCPKG_COMMIT}"
+            echo "level_path=/data/levels/world1/welcome_antarctica.stl"
+          } > artifact/BUILD_INFO.txt
+          du -sh artifact
+          ls -lah artifact
+
+      - name: Upload browser build
+        uses: actions/upload-artifact@v4
+        with:
+          name: supertux-wasm-${{ github.sha }}
+          path: artifact/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0

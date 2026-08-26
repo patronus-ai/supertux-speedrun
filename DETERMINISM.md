@@ -5,7 +5,7 @@ saturation* — digest `b62258cb315810bf`, `steps_sampled=1200` and `distinct_po
 run. Determinism is input-keyed, not idle-machine luck.
 
 **Upstream base:** SuperTux `c1ddb4f`, emsdk 6.0.8, vcpkg `wasm32-emscripten`.
-**Build script:** `/home/ubuntu/stx_build_wasm.sh` (encodes every step below).
+**Build script:** `tools/stx_build_wasm.sh` (encodes every step below).
 **Verifier:** `/home/ubuntu/stx_det_check.py`.
 
 ---
@@ -94,10 +94,9 @@ fails silently:
 | `rsync -aP ../data/ data/` | 183 | 555 KB `supertux2.data`, **no levels** — an engine with no content |
 | `rm supertux2.html && cp template.html supertux2.html` | 185 | `supertux_loadFiles is not defined`, `main()` aborts, `/data` never mounts |
 
-Plus one of ours: `--preload-file` receives an **absolute** host path, so data lands at
-`/home/ubuntu/supertux-src/build-wasm/data/...` inside MEMFS. `main.cpp` splits a level argv into
-dirname/basename and mounts the dirname, so a *relative* level path resolves against MEMFS root
-and fails. **Pass the level as an absolute MEMFS path.**
+The build aliases its absolute host data directory to `/data` inside MEMFS. `main.cpp` splits a
+level argv into dirname/basename and mounts the dirname, so pass the fixed level as the stable
+absolute MEMFS path `/data/levels/world1/welcome_antarctica.stl`.
 
 `music/` (87 MB of 245 MB) is excluded from the preload — audio is disabled for determinism and
 preloaded files live in in-memory MEMFS. SuperTux logs "using dummy sound file" and continues.
@@ -124,7 +123,6 @@ selected and vcpkg's Boost is rejected as "(32bit)".
 ## Still open
 
 - Verified on **one level, one 1,200-step tape**. Confirm on a longer run and a second level.
-- **No terminal condition exported.** We can read position but not "level complete", which a
-  speedrun objective needs.
-- Build carries local patches + two manual steps; not reproducible from a clean checkout without
-  `stx_build_wasm.sh`.
+- Confirm deterministic completion and death handling in the packaged browser artifact.
+- Reduce the preload from the complete no-music data tree to the assets required by the fixed
+  challenge level.
