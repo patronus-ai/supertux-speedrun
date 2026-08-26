@@ -84,6 +84,18 @@ public:
   void abort_level();
   bool is_active() const;
 
+  /** BENCHMARK -- TWO DISTINCT MOMENTS, and a speedrun must time the first one.
+
+      is_goal_reached(): the end sequence EXISTS, i.e. Tux has just touched the goal. This is
+      the correct stopping point for a speedrun clock.
+
+      is_level_finished(): m_end_seq_started, which check_end_conditions() only sets once
+      m_end_sequence->is_done() -- that is AFTER the victory animation (Tux walking off,
+      fireworks) has played out. Timing a run to this point inflates every result by the
+      animation's length and makes the metric depend on animation duration rather than play. */
+  bool is_goal_reached() const { return m_end_sequence != nullptr; }
+  bool is_level_finished() const { return m_end_seq_started; }
+
   /** Enters or leaves level editor mode */
   void set_editmode(bool edit_mode = true);
 

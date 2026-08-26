@@ -60,3 +60,4 @@ ehthumbs.db
 Thumbs.db
 .directory
 *~
+build-wasm/

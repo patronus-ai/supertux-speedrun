@@ -527,6 +527,9 @@ ScreenManager::handle_screen_switch()
   }
 }
 
+static Uint32 g_deterministic_ticks = 0;
+unsigned int g_deterministic_steps = 0;  // exported via st_step_count()
+
 void ScreenManager::loop_iter()
 {
   // Useful if screens edit their status without switching screens
@@ -536,6 +539,21 @@ void ScreenManager::loop_iter()
   Uint32 ticks = SDL_GetTicks();
   elapsed_ticks += ticks - last_ticks;
   last_ticks = ticks;
+
+  // DETERMINISTIC MODE (env SUPERTUX_DETERMINISTIC=1).
+  // SuperTux already steps physics at a FIXED size (ms_per_step); what varies run to run is
+  // how MANY steps a frame consumes, because that is derived from wall-clock elapsed_ticks --
+  // plus the large-jump reset below. Identical inputs therefore land on different step
+  // boundaries and the run diverges. Forcing exactly one step per iteration removes the only
+  // wall-clock dependency in the loop, which is what an offline/TAS harness needs: the tape
+  // is indexed by step, so a step must always mean the same thing.
+  static const bool s_deterministic = (getenv("SUPERTUX_DETERMINISTIC") != nullptr);
+  if (s_deterministic) {
+    elapsed_ticks = ms_per_step;
+    ticks = last_ticks = g_deterministic_ticks;
+    g_deterministic_ticks += ms_per_step;
+    ++g_deterministic_steps;
+  }
 
   if (elapsed_ticks > ms_per_step * 8) {
     // when the game loads up or levels are switched the
