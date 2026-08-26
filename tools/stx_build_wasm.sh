@@ -19,15 +19,15 @@ set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 SRC=${SUPERTUX_SRC_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}
 BUILD_DIR=${SUPERTUX_BUILD_DIR:-$SRC/build-wasm}
-EMSDK_ROOT=${EMSDK_ROOT:-${EMSDK:-}}
-VCPKG_ROOT=${VCPKG_ROOT:-}
+STX_EMSDK_ROOT=${EMSDK_ROOT:-${EMSDK:-}}
+STX_VCPKG_ROOT=${VCPKG_ROOT:-}
 VCPKG_TRIPLET=${VCPKG_TRIPLET:-wasm32-emscripten}
 
-if [[ -z "$EMSDK_ROOT" || ! -f "$EMSDK_ROOT/emsdk_env.sh" ]]; then
+if [[ -z "$STX_EMSDK_ROOT" || ! -f "$STX_EMSDK_ROOT/emsdk_env.sh" ]]; then
   echo "Set EMSDK_ROOT to an activated emsdk checkout." >&2
   exit 2
 fi
-if [[ -z "$VCPKG_ROOT" || ! -x "$VCPKG_ROOT/vcpkg" ]]; then
+if [[ -z "$STX_VCPKG_ROOT" || ! -x "$STX_VCPKG_ROOT/vcpkg" ]]; then
   echo "Set VCPKG_ROOT to a bootstrapped vcpkg checkout." >&2
   exit 2
 fi
@@ -53,7 +53,7 @@ if command -v flock >/dev/null 2>&1; then
 fi
 
 # shellcheck source=/dev/null
-source "$EMSDK_ROOT/emsdk_env.sh" >/dev/null 2>&1
+source "$STX_EMSDK_ROOT/emsdk_env.sh" >/dev/null 2>&1
 cd "$SRC"
 
 # Upstream applies this to the SDL_ttf submodule; a re-apply is a harmless no-op.
@@ -93,8 +93,8 @@ echo "=== CMAKE CONFIGURE ==="
 # point and loads the emscripten toolchain underneath, so emcc is the actual compiler.
 # (The wasm32-emscripten triplet sets CHAINLOAD for vcpkg's own package builds only, which
 # is why the dependencies built fine while the consuming project did not.)
-EM_TC="$EMSDK_ROOT/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
-VLIB="$VCPKG_ROOT/installed/$VCPKG_TRIPLET/lib"
+EM_TC="$STX_EMSDK_ROOT/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+VLIB="$STX_VCPKG_ROOT/installed/$VCPKG_TRIPLET/lib"
 
 # FindOggVorbis.cmake:37 does check_library_exists(vorbis ...), emitting a bare -lvorbis that
 # wasm-ld cannot resolve without vcpkg's lib dir on the search path. Passing
@@ -129,7 +129,7 @@ VLIB="$VCPKG_ROOT/installed/$VCPKG_TRIPLET/lib"
 emcmake cmake .. \
   -DCMAKE_BUILD_TYPE=Release \
   -DENABLE_OPENGLES2=ON \
-  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+  -DCMAKE_TOOLCHAIN_FILE="$STX_VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
   -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="$EM_TC" \
   -DVCPKG_TARGET_TRIPLET="$VCPKG_TRIPLET" \
   -DCMAKE_HAVE_LIBC_PTHREAD=1 \
