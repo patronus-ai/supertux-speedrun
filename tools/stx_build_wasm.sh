@@ -152,7 +152,26 @@ echo "=== BUILD ==="
 # CMake's nested ExternalProject configure steps repeatedly lost GNU Make's jobserver children
 # on GitHub-hosted runners ("wait: No child processes" followed by SIGTERM). Ninja avoids that
 # process-accounting path and works for both the top-level project and its nested dependencies.
-emmake cmake --build . --parallel "$JOBS"
+#
+# Emscripten configure probes can then run silently for several minutes. Keep producing output
+# while the real build is alive so hosted runners/proxies do not treat that silence as a stalled
+# command and send SIGTERM (the observed failure was Ninja exit 143 after 156 quiet seconds).
+set +e
+emmake cmake --build . --parallel "$JOBS" &
+STX_BUILD_PID=$!
+while kill -0 "$STX_BUILD_PID" 2>/dev/null; do
+  sleep 20
+  if kill -0 "$STX_BUILD_PID" 2>/dev/null; then
+    echo "build heartbeat: Ninja is still running"
+  fi
+done
+wait "$STX_BUILD_PID"
+STX_BUILD_STATUS=$?
+set -e
+if [[ "$STX_BUILD_STATUS" -ne 0 ]]; then
+  echo "Browser build failed with exit code $STX_BUILD_STATUS" >&2
+  exit "$STX_BUILD_STATUS"
+fi
 echo "build_exit=0"
 
 # Install SuperTux's own HTML shell over emscripten's default one. CMakeLists.txt:1157
