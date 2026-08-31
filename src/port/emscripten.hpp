@@ -182,19 +182,19 @@ st_player_dead()
   return (p.is_dead() || p.is_dying()) ? 1 : 0;
 }
 
-// Browser embedding starts muted so loading a challenge never produces surprise audio. The
-// host UI calls this from a user gesture to opt in to the packaged music and sound effects.
+// Preserve the browser host ABI, but this benchmark packages no audio assets. Calls that used
+// to unmute must therefore leave both managers disabled instead of triggering missing-file
+// lookups throughout the level.
 EMSCRIPTEN_KEEPALIVE
 void
-st_set_muted(int muted)
+st_set_muted(int /*muted*/)
 {
   auto* sound = ::SoundManager::current();
   if (!sound) return;
 
-  const bool enabled = (muted == 0);
-  if (!enabled) sound->stop_sounds();
-  sound->enable_sound(enabled);
-  sound->enable_music(enabled);
+  sound->stop_sounds();
+  sound->enable_sound(false);
+  sound->enable_music(false);
 }
 
 EMSCRIPTEN_KEEPALIVE

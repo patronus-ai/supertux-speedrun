@@ -72,8 +72,8 @@ mkdir -p "$BUILD_DIR"
 # Stage the fixed challenge into the build dir before configuring. CMake only generates one
 # file there (CMakeLists.txt:1205 configure_file for levels/misc/menu.stl); data is otherwise
 # supplied separately. The SpeedrunBench stage contains the observed runtime asset closure for
-# Welcome to Antarctica, all sound effects, and its two music tracks. It intentionally excludes
-# every other level and the unrelated 200+ MB content tree.
+# Welcome to Antarctica without audio. It intentionally excludes every other level and the
+# unrelated 200+ MB content tree.
 echo "=== staging SpeedrunBench challenge data into build-wasm/data ==="
 "$SCRIPT_DIR/stx_stage_speedrun_data.sh" "$SRC/data" "$BUILD_DIR/data"
 du -sh "$BUILD_DIR/data" | sed 's/^/  staged: /'

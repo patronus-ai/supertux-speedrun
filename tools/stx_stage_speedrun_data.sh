@@ -20,14 +20,13 @@ fi
 mkdir -p "$DESTINATION_DATA_DIR"
 
 # The manifest is the observed startup image/font/script closure for Welcome to Antarctica.
-# Sounds, image particles, power-ups, projectiles, explosions, and their light sprites are
-# opened only when their actions occur, so retain those small trees. Keep the challenge music,
-# completion music, shaders, particle definitions, and speech as conservative runtime
-# dependencies. rsync's delete flags ensure an older full-game staging tree is actually pruned.
+# Image particles, power-ups, projectiles, explosions, and their light sprites are opened only
+# when their actions occur, so retain those small trees. This browser benchmark is permanently
+# silent, so music, effects, and speech are intentionally absent. rsync's delete flags ensure
+# an older audio-bearing staging tree is actually pruned.
 rsync -a --delete --delete-excluded \
   --include='*/' \
   --include-from="$MANIFEST" \
-  --include='/sounds/***' \
   --include='/images/particles/***' \
   --include='/images/powerups/***' \
   --include='/images/objects/bullets/***' \
@@ -36,13 +35,6 @@ rsync -a --delete --delete-excluded \
   --include='/images/objects/lightmap_light/***' \
   --include='/particles/***' \
   --include='/shader/***' \
-  --include='/speech/***' \
-  --include='/music/' \
-  --include='/music/antarctic/' \
-  --include='/music/antarctic/chipdisko.music' \
-  --include='/music/antarctic/chipdisko.ogg' \
-  --include='/music/misc/' \
-  --include='/music/misc/leveldone.ogg' \
   --include='/ACKNOWLEDGEMENTS.txt' \
   --include='/AUTHORS' \
   --include='/credits.stxt' \
@@ -54,9 +46,6 @@ required=(
   "images/tiles.strf"
   "fonts/SuperTux-Medium.ttf"
   "fonts/Roboto-Regular.ttf"
-  "music/antarctic/chipdisko.ogg"
-  "music/misc/leveldone.ogg"
-  "sounds/jump.wav"
   "images/particles/smoke.sprite"
   "images/particles/smoke-1.png"
   "images/objects/lightmap_light/lightmap_light-tiny.sprite"
@@ -67,6 +56,13 @@ required=(
 for asset in "${required[@]}"; do
   if [[ ! -s "$DESTINATION_DATA_DIR/$asset" ]]; then
     echo "Required SpeedrunBench asset was not staged: $asset" >&2
+    exit 1
+  fi
+done
+
+for audio_dir in music sounds speech; do
+  if find "$DESTINATION_DATA_DIR/$audio_dir" -type f -print -quit 2>/dev/null | grep -q .; then
+    echo "Audio file was unexpectedly staged under: $audio_dir" >&2
     exit 1
   fi
 done

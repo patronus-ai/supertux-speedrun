@@ -24,8 +24,8 @@ Artifacts are retained for 30 days. The packaged filesystem is mounted at `/data
 fixed challenge level is always `/data/levels/world1/welcome_antarctica.stl` regardless of
 which machine produced the build.
 
-`tools/speedrun-data-manifest.txt` records the runtime-opened file closure and
-`tools/stx_stage_speedrun_data.sh` creates the reduced data tree. If this level or its engine
+`tools/speedrun-data-manifest.txt` records the runtime-opened non-audio file closure and
+`tools/stx_stage_speedrun_data.sh` creates the reduced, permanently silent data tree. If this level or its engine
 assets change, regenerate the manifest from a full build and smoke-test a complete trace before
 shipping the updated artifact.
 
