@@ -37,6 +37,9 @@
 #include "supertux/screen_manager.hpp"
 #include "supertux/sector.hpp"
 
+extern unsigned int g_benchmark_input_mask;
+extern bool g_benchmark_input_override;
+
 extern "C" {
 
 void set_resolution(int w, int h);
@@ -91,6 +94,27 @@ st_tick()
   auto* sm = ::ScreenManager::current();
   if (!sm) return -1;
   sm->loop_iter();                    // public (screen_manager.hpp:60)
+  extern unsigned int g_deterministic_steps;
+  return static_cast<int>(g_deterministic_steps);
+}
+
+// Run one deterministic step with a trajectory-provided gameplay input mask.
+// Bits 0..5 are LEFT, RIGHT, UP, DOWN, JUMP and ACTION respectively. Menu,
+// escape and debug controls are intentionally unreachable through this API.
+EMSCRIPTEN_KEEPALIVE
+int
+st_tick_with_input(unsigned int mask)
+{
+  constexpr unsigned int GAMEPLAY_MASK = 0x3fu;
+  if ((mask & ~GAMEPLAY_MASK) != 0u) return -2;
+
+  auto* sm = ::ScreenManager::current();
+  if (!sm) return -1;
+
+  g_benchmark_input_mask = mask;
+  g_benchmark_input_override = true;
+  sm->loop_iter();
+
   extern unsigned int g_deterministic_steps;
   return static_cast<int>(g_deterministic_steps);
 }

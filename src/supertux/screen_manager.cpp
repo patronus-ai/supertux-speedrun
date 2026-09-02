@@ -50,6 +50,12 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #include <emscripten/html5.h>
+
+// Browser trajectory playback sets one stable gameplay-action mask immediately
+// before each deterministic tick. The mask is applied after SDL events have
+// been processed so Controller::pressed()/released() retain their edge semantics.
+unsigned int g_benchmark_input_mask = 0;
+bool g_benchmark_input_override = false;
 #endif
 
 struct ScreenManager::FPS_Stats
@@ -448,6 +454,24 @@ ScreenManager::process_events()
         break;
     }
   }
+
+#ifdef __EMSCRIPTEN__
+  if (g_benchmark_input_override)
+  {
+    static const Control controls[] = {
+      Control::LEFT,
+      Control::RIGHT,
+      Control::UP,
+      Control::DOWN,
+      Control::JUMP,
+      Control::ACTION
+    };
+    Controller& controller = m_input_manager.get_controller();
+    for (unsigned int bit = 0; bit < 6; ++bit)
+      controller.set_control(controls[bit],
+                             (g_benchmark_input_mask & (1u << bit)) != 0);
+  }
+#endif
 }
 
 bool
