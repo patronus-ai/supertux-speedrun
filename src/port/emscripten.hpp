@@ -119,19 +119,6 @@ st_tick_with_input(unsigned int mask)
   return static_cast<int>(g_deterministic_steps);
 }
 
-// Let replay hosts reproduce traces captured against a different fixed-step
-// duration without changing the browser scheduler. A value of 1 keeps the
-// native 15 ms benchmark step; 25/24 reproduces a true 1/64-second step.
-EMSCRIPTEN_KEEPALIVE
-int
-st_set_replay_speed(float speed)
-{
-  auto* sm = ::ScreenManager::current();
-  if (!sm || speed <= 0.0f || speed > 4.0f) return -1;
-  sm->set_speed(speed);
-  return 0;
-}
-
 // A state fingerprint over EVERY moving object, not just Tux. Needed because a no-input
 // control run leaves Tux motionless: his position is then one constant value at every step in
 // every run, so comparing it across runs is trivially identical and proves nothing. The

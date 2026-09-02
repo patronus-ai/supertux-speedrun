@@ -132,7 +132,6 @@ jobs:
           grep -q "st_goal_reached" build-wasm/supertux2.js
           grep -q "st_gameplay_ready" build-wasm/supertux2.js
           grep -q "st_tick_with_input" build-wasm/supertux2.js
-          grep -q "st_set_replay_speed" build-wasm/supertux2.js
           grep -q "st_set_muted" build-wasm/supertux2.js
           mkdir -p artifact
           cp build-wasm/supertux2.html artifact/
