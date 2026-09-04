@@ -35,6 +35,11 @@ KeyboardConfig::KeyboardConfig() :
   m_keymap[SDLK_SPACE]    = Control::JUMP;
   m_keymap[SDLK_LCTRL]    = Control::ACTION;
   m_keymap[SDLK_LALT]     = Control::ACTION;
+  // Browsers (Emscripten SDL2) do not deliver the modifier keys above as key
+  // events, so the fire/run ACTION is unreachable in the WASM build. Bind two
+  // ordinary keys as well so the action works in a browser tab.
+  m_keymap[SDLK_x]        = Control::ACTION;
+  m_keymap[SDLK_z]        = Control::ACTION;
   m_keymap[SDLK_ESCAPE]   = Control::ESCAPE;
   m_keymap[SDLK_p]        = Control::START;
   m_keymap[SDLK_PAUSE]    = Control::START;
