@@ -23,12 +23,24 @@ set -u
 exec 9>/tmp/stx_build.lock
 if ! flock -n 9; then
   echo "ANOTHER BUILD IS ALREADY RUNNING (holding /tmp/stx_build.lock) -- refusing to start."
-  echo "Watch the existing one:  grep -E 'cmake_exit|make_exit|STX_' /home/ubuntu/stx_wasm_build.log"
+  echo "Wait for it to finish (look for cmake_exit / make_exit / STX_ in its output)."
   exit 3
 fi
 
-source /home/ubuntu/emsdk/emsdk_env.sh >/dev/null 2>&1
-SRC=/home/ubuntu/supertux-src
+# PORTABLE PATHS. This used to build /home/ubuntu/supertux-src with emsdk and vcpkg under
+# /home/ubuntu, so it only ran on the machine the benchmark was developed on. Now:
+#   SRC        the checkout this script lives in (override with STX_SRC)
+#   EMSDK      an emsdk checkout with 6.0.8 activated (see DETERMINISM.md)
+#   VCPKG_ROOT a vcpkg checkout with the wasm32-emscripten dependencies installed
+#              (tools/stx_setup_deps.sh does that)
+SRC="${STX_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+EMSDK="${EMSDK:-$HOME/emsdk}"
+VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
+[ -f "$EMSDK/emsdk_env.sh" ] || { echo "EMSDK not found at $EMSDK -- install emsdk 6.0.8 and set EMSDK" >&2; exit 2; }
+source "$EMSDK/emsdk_env.sh" >/dev/null 2>&1
+EMCC_VER=$(emcc --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+[ "$EMCC_VER" = "6.0.8" ] || { echo "emcc is ${EMCC_VER:-missing}; this build is pinned to emsdk 6.0.8 (DETERMINISM.md)" >&2; exit 2; }
+[ -f "$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" ] || { echo "vcpkg not found at $VCPKG_ROOT -- run tools/stx_setup_deps.sh or set VCPKG_ROOT" >&2; exit 2; }
 cd "$SRC" || exit 1
 
 # Upstream applies this to the SDL_ttf submodule; a re-apply is a harmless no-op.
@@ -69,8 +81,8 @@ echo "=== CMAKE CONFIGURE ==="
 # point and loads the emscripten toolchain underneath, so emcc is the actual compiler.
 # (The wasm32-emscripten triplet sets CHAINLOAD for vcpkg's own package builds only, which
 # is why the dependencies built fine while the consuming project did not.)
-EM_TC=/home/ubuntu/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
-VLIB=/home/ubuntu/vcpkg/installed/wasm32-emscripten/lib
+EM_TC="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+VLIB="$VCPKG_ROOT/installed/wasm32-emscripten/lib"
 
 # FindOggVorbis.cmake:37 does check_library_exists(vorbis ...), emitting a bare -lvorbis that
 # wasm-ld cannot resolve without vcpkg's lib dir on the search path. Passing
@@ -105,7 +117,7 @@ VLIB=/home/ubuntu/vcpkg/installed/wasm32-emscripten/lib
 emcmake cmake .. \
   -DCMAKE_BUILD_TYPE=Release \
   -DENABLE_OPENGLES2=ON \
-  -DCMAKE_TOOLCHAIN_FILE=/home/ubuntu/vcpkg/scripts/buildsystems/vcpkg.cmake \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
   -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="$EM_TC" \
   -DVCPKG_TARGET_TRIPLET=wasm32-emscripten \
   -DCMAKE_HAVE_LIBC_PTHREAD=1 \
@@ -122,7 +134,7 @@ echo "cmake_exit=$rc"
 if [ "$rc" -ne 0 ]; then echo STX_CONFIGURE_FAILED; exit 1; fi
 
 echo "=== MAKE ==="
-emmake make -j30
+emmake make -j"${STX_JOBS:-$(nproc)}"
 rc=$?
 echo "make_exit=$rc"
 if [ "$rc" -ne 0 ]; then echo STX_BUILD_FAILED; exit 1; fi
