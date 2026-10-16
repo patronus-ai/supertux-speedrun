@@ -5,8 +5,18 @@ saturation* — digest `b62258cb315810bf`, `steps_sampled=1200` and `distinct_po
 run. Determinism is input-keyed, not idle-machine luck.
 
 **Upstream base:** SuperTux `c1ddb4f`, emsdk 6.0.8, vcpkg `wasm32-emscripten`.
-**Build script:** `/home/ubuntu/stx_build_wasm.sh` (encodes every step below).
-**Verifier:** `/home/ubuntu/stx_det_check.py`.
+**Build:** `tools/stx_setup_deps.sh` (vcpkg dependencies, pinned commit), then
+`tools/stx_build_wasm.sh` (encodes every step below). Both read `EMSDK` and `VCPKG_ROOT`:
+
+```bash
+EMSDK=/path/to/emsdk VCPKG_ROOT=/path/to/vcpkg tools/stx_setup_deps.sh
+EMSDK=/path/to/emsdk VCPKG_ROOT=/path/to/vcpkg tools/stx_build_wasm.sh   # -> build-wasm/
+```
+
+A build from these scripts replays the benchmark's SuperTux seed (`welcome_seed_9498f.json` in
+speedrun_bench) to `goal_frame=9498`, `max_progress=8927.6513671875`, 10 deaths -- identical to
+the build the benchmark ran on, though the binaries are not byte-identical (dependency versions
+and the build directory path differ).
 
 ---
 
@@ -95,7 +105,7 @@ fails silently:
 | `rm supertux2.html && cp template.html supertux2.html` | 185 | `supertux_loadFiles is not defined`, `main()` aborts, `/data` never mounts |
 
 Plus one of ours: `--preload-file` receives an **absolute** host path, so data lands at
-`/home/ubuntu/supertux-src/build-wasm/data/...` inside MEMFS. `main.cpp` splits a level argv into
+`<build dir>/data/...` inside MEMFS (the absolute path of the build directory). `main.cpp` splits a level argv into
 dirname/basename and mounts the dirname, so a *relative* level path resolves against MEMFS root
 and fails. **Pass the level as an absolute MEMFS path.**
 
